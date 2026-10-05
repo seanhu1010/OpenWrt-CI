@@ -165,13 +165,38 @@ fi
 # 清理 coremark 跑分定时任务与冗余文件
 find package/ feeds/ -type f \( -name "*default-settings*" -o -name "zzz-default-settings" -o -name "*.sh" \) -exec sed -i '/coremark/d' {} + 2>/dev/null || true
 rm -rf package/base-files/files/etc/coremark.sh 2>/dev/null || true
+
+# 预置初始合法 /etc/config/fstab，彻底避免 block 启动时报错 fstab: Entry not found
+mkdir -p package/base-files/files/etc/config
+cat > package/base-files/files/etc/config/fstab << 'EOF'
+config global
+	option anon_swap '0'
+	option anon_mount '0'
+	option auto_swap '1'
+	option auto_mount '1'
+	option delay_root '5'
+	option check_fs '0'
+
+EOF
+
+# 首次开机初始化脚本：清理残余定时任务并动态生成/补充 fstab
 mkdir -p package/base-files/files/etc/uci-defaults
-cat > package/base-files/files/etc/uci-defaults/99-clean-crontabs << 'EOF'
+cat > package/base-files/files/etc/uci-defaults/99-init-system << 'EOF'
 #!/bin/sh
+# 清理定时任务中的 coremark
 sed -i '/coremark/d' /etc/crontabs/root 2>/dev/null || true
+
+# 自动生成/补充 fstab 配置
+if command -v block >/dev/null 2>&1; then
+  block detect > /tmp/fstab.tmp 2>/dev/null
+  if [ -s /tmp/fstab.tmp ]; then
+    cat /tmp/fstab.tmp >> /etc/config/fstab
+    rm -f /tmp/fstab.tmp
+  fi
+fi
 exit 0
 EOF
-chmod +x package/base-files/files/etc/uci-defaults/99-clean-crontabs
+chmod +x package/base-files/files/etc/uci-defaults/99-init-system
 
 luci_system_js="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 firmware_version_anchor="_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),"
