@@ -1,0 +1,33 @@
+name: zn-m2\NOWIFI-LibWrt
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  # schedule:
+  #   - cron: "0 18 * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  Build:
+    uses: ./.github/workflows/Build-OpenWrt.yml
+    permissions:
+      contents: write
+      actions: write
+    with:
+      repo_url: https://github.com/laipeng668/openwrt-6.x.git
+      repo_branch: 25.12-nss
+      config_file: configs/zn-m2-NOWIFI.config
+      general_config_file: none
+      lan_ip: "10.1.1.1"
+      dhcp_start: "30"
+      dhcp_limit: "201"
+      firmware_tag: zn-m2-NOWIFI
+      kernel_file: kernel-6.12
+      artifact_prefix: zn-m2-NOWIFI
+      manifest_file: libwrt-qualcommax-ipq60xx.manifest
+      keep_only_target_images: "*zn_m2-squashfs-factory.ubi *zn_m2-squashfs-sysupgrade.bin"
+      release_summary: >-
+        这是兆能 M2 路由器专属、开启全功能 NSS 且不带 WiFi 的 6.12 内核 LibWrt 固件，默认主题为 Aurora。默认 LAN IP 为 10.1.1.1/24，DHCP 地址池范围为 10.1.1.30 - 10.1.1.230。固件仅包含 factory.ubi 和 sysupgrade.bin 两个专属刷机文件。精简移除了 acme、wireguard、passwall、frp、3cat、ddns、uhttpd配置页、upnp、diskman、hd-idle、samba4 等插件，保留必要网络管理与轻量系统运维工具。

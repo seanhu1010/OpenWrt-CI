@@ -43,6 +43,30 @@ on:
         required: false
         type: string
         default: apk
+      general_config_file:
+        required: false
+        type: string
+        default: configs/General.config
+      diy_script:
+        required: false
+        type: string
+        default: scripts/Roc-script.sh
+      lan_ip:
+        required: false
+        type: string
+        default: "192.168.2.1"
+      dhcp_start:
+        required: false
+        type: string
+        default: ""
+      dhcp_limit:
+        required: false
+        type: string
+        default: ""
+      keep_only_target_images:
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -53,10 +77,13 @@ defaults:
     shell: bash
 
 env:
-  GENERAL_CONFIG_FILE: configs/General.config
-  DIY_SCRIPT: scripts/Roc-script.sh
+  GENERAL_CONFIG_FILE: ${{ inputs.general_config_file || 'configs/General.config' }}
+  DIY_SCRIPT: ${{ inputs.diy_script || 'scripts/Roc-script.sh' }}
   OPENWRT_PATH: /mnt/openwrt
   TZ: Asia/Shanghai
+  LAN_IP: ${{ inputs.lan_ip || '192.168.2.1' }}
+  DHCP_START: ${{ inputs.dhcp_start || '' }}
+  DHCP_LIMIT: ${{ inputs.dhcp_limit || '' }}
 
 jobs:
   Build:
@@ -171,7 +198,7 @@ jobs:
       id: variables
       env:
         ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
-        CUSTOMIZATION_HASH: ${{ hashFiles('scripts/Roc-script.sh', 'configs/General.config', inputs.config_file) }}
+        CUSTOMIZATION_HASH: ${{ hashFiles('scripts/Roc-script.sh', 'configs/**', inputs.config_file) }}
         REPO_URL: ${{ inputs.repo_url }}
         REPO_BRANCH: ${{ inputs.repo_branch }}
         CONFIG_FILE: ${{ inputs.config_file }}
@@ -248,13 +275,17 @@ jobs:
         cd "$OPENWRT_PATH"
         "$GITHUB_WORKSPACE/$DIY_SCRIPT" \
           "$GITHUB_WORKSPACE/$CONFIG_FILE" \
-          "$GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE"
+          "$GENERAL_CONFIG_FILE"
 
     - name: Download DL Package(下载DL软件包)
       env:
         CONFIG_FILE: ${{ inputs.config_file }}
       run: |
-        cat "$GITHUB_WORKSPACE/$CONFIG_FILE" "$GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE" > "$OPENWRT_PATH/.config"
+        if [ -n "$GENERAL_CONFIG_FILE" ] && [ "$GENERAL_CONFIG_FILE" != "none" ] && [ -f "$GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE" ]; then
+          cat "$GITHUB_WORKSPACE/$CONFIG_FILE" "$GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE" > "$OPENWRT_PATH/.config"
+        else
+          cp "$GITHUB_WORKSPACE/$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        fi
         cd "$OPENWRT_PATH"
         if [ "${{ inputs.remove_sqm_scripts_nss }}" = "true" ]; then
           sed -i '/CONFIG_PACKAGE_sqm-scripts-nss=y/d' .config
@@ -342,6 +373,27 @@ jobs:
         fi
         cp "$third_party_sources" "$ARTIFACT_PREFIX.third-party-sources.txt"
         rm -rf packages feeds.buildinfo version.buildinfo sha256sums profiles.json
+        if [ -n "${{ inputs.keep_only_target_images }}" ]; then
+          IFS=' ' read -r -a allowed_patterns <<< "${{ inputs.keep_only_target_images }}"
+          for file in *; do
+            case "$file" in
+              "$ARTIFACT_PREFIX"* | *.manifest | *.config* | *.tar.gz | *.txt)
+                continue
+                ;;
+            esac
+            keep=0
+            for pat in "${allowed_patterns[@]}"; do
+              if [[ "$file" == $pat ]]; then
+                keep=1
+                break
+              fi
+            done
+            if [ "$keep" -eq 0 ]; then
+              echo "Removing extra image file: $file"
+              rm -f "$file"
+            fi
+          done
+        fi
         echo "firmware_path=$PWD" >> "$GITHUB_OUTPUT"
 
     - name: Upload Firmware Artifact(上传固件产物)
@@ -388,7 +440,7 @@ jobs:
           - 💻 这是 ${{ inputs.firmware_tag }} 平台使用的 OpenWrt 固件
           - ⚽ 固件源码: ${{ inputs.repo_url }}
           - 💝 源码分支: ${{ inputs.repo_branch }}
-          - 🌐 默认地址: **192.168.2.1**
+          - 🌐 默认地址: **${{ inputs.lan_ip || '192.168.2.1' }}**
           - 🔑 默认密码: none
           ### 🧊 固件版本
           - 固件内核版本：**${{ needs.Build.outputs.version_kernel }}**

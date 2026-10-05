@@ -37,7 +37,9 @@ else
   echo "Error: pass the device config as the first argument or CONFIG_FILE" >&2
   exit 1
 fi
-CONFIG_FILES+=("$(resolve_config_file "$GENERAL_CONFIG_FILE")")
+if [ -n "$GENERAL_CONFIG_FILE" ] && [ "$GENERAL_CONFIG_FILE" != "none" ]; then
+  CONFIG_FILES+=("$(resolve_config_file "$GENERAL_CONFIG_FILE")")
+fi
 
 config_symbol_enabled() {
   local symbol="$1"
@@ -133,8 +135,31 @@ mkdir -p "$(dirname "$THIRD_PARTY_SOURCES_FILE")"
 printf 'Repository\tBranch\tCommit\n' > "$THIRD_PARTY_SOURCES_FILE"
 
 # 修改默认IP & 固件名称 & 编译署名和时间
-sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
+TARGET_LAN_IP="${LAN_IP:-192.168.2.1}"
+sed -i "s/192.168.1.1/${TARGET_LAN_IP}/g" package/base-files/files/bin/config_generate
 sed -i "s/hostname='.*'/hostname='Roc'/g" package/base-files/files/bin/config_generate
+
+# 配置 DHCP 范围与静态网段 (若指定)
+if [ -n "${DHCP_START:-}" ] && [ -n "${DHCP_LIMIT:-}" ]; then
+  if [ -f package/network/services/dnsmasq/files/dhcp.conf ]; then
+    sed -i "s/option start .*/option start '${DHCP_START}'/" package/network/services/dnsmasq/files/dhcp.conf
+    sed -i "s/option limit .*/option limit '${DHCP_LIMIT}'/" package/network/services/dnsmasq/files/dhcp.conf
+  fi
+  mkdir -p package/base-files/files/etc/uci-defaults
+  cat > package/base-files/files/etc/uci-defaults/99-custom-dhcp << EOF
+#!/bin/sh
+uci -q batch << EOI
+set network.lan.ipaddr='${TARGET_LAN_IP}'
+set network.lan.netmask='255.255.255.0'
+set dhcp.lan.start='${DHCP_START}'
+set dhcp.lan.limit='${DHCP_LIMIT}'
+commit network
+commit dhcp
+EOI
+exit 0
+EOF
+  chmod +x package/base-files/files/etc/uci-defaults/99-custom-dhcp
+fi
 luci_system_js="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 firmware_version_anchor="_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),"
 grep -Fq "$firmware_version_anchor" "$luci_system_js" || { echo "Error: LuCI firmware version anchor was not found in $luci_system_js" >&2; exit 1; }

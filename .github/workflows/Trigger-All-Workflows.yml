@@ -33,6 +33,11 @@ on:
         required: false
         type: boolean
         default: true
+      zn_m2_nowifi_libwrt:
+        description: 运行 zn-m2-NOWIFI-LibWrt
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 18 * * 5"
 
@@ -89,3 +94,10 @@ jobs:
         actions: read
       with:
         sdk_version: ALL
+
+    zn-m2-NOWIFI-LibWrt:
+      if: ${{ inputs.zn_m2_nowifi_libwrt }}
+      uses: ./.github/workflows/zn-m2-NOWIFI-LibWrt.yml
+      permissions:
+        contents: write
+        actions: write
