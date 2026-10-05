@@ -161,6 +161,18 @@ exit 0
 EOF
   chmod +x package/base-files/files/etc/uci-defaults/99-custom-dhcp
 fi
+
+# 清理 coremark 跑分定时任务与冗余文件
+find package/ feeds/ -type f \( -name "*default-settings*" -o -name "zzz-default-settings" -o -name "*.sh" \) -exec sed -i '/coremark/d' {} + 2>/dev/null || true
+rm -rf package/base-files/files/etc/coremark.sh 2>/dev/null || true
+mkdir -p package/base-files/files/etc/uci-defaults
+cat > package/base-files/files/etc/uci-defaults/99-clean-crontabs << 'EOF'
+#!/bin/sh
+sed -i '/coremark/d' /etc/crontabs/root 2>/dev/null || true
+exit 0
+EOF
+chmod +x package/base-files/files/etc/uci-defaults/99-clean-crontabs
+
 luci_system_js="feeds/luci/modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js"
 firmware_version_anchor="_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),"
 grep -Fq "$firmware_version_anchor" "$luci_system_js" || { echo "Error: LuCI firmware version anchor was not found in $luci_system_js" >&2; exit 1; }
