@@ -67,6 +67,10 @@ on:
         required: false
         type: string
         default: ""
+      router_hostname:
+        required: false
+        type: string
+        default: LibWrt
 
 permissions:
   contents: read
@@ -84,6 +88,7 @@ env:
   LAN_IP: ${{ inputs.lan_ip || '192.168.2.1' }}
   DHCP_START: ${{ inputs.dhcp_start || '' }}
   DHCP_LIMIT: ${{ inputs.dhcp_limit || '' }}
+  ROUTER_HOSTNAME: ${{ inputs.router_hostname || 'LibWrt' }}
 
 jobs:
   Build:

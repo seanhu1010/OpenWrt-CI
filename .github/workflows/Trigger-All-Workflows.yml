@@ -33,8 +33,8 @@ on:
         required: false
         type: boolean
         default: true
-      zn_m2_nowifi_libwrt:
-        description: 运行 zn-m2-NOWIFI-LibWrt
+      zn_m2_nowifi_nousb_libwrt:
+        description: 运行 zn-m2-NOWIFI-NOUSB-LibWrt
         required: false
         type: boolean
         default: false
@@ -95,9 +95,9 @@ jobs:
       with:
         sdk_version: ALL
 
-    zn-m2-NOWIFI-LibWrt:
-      if: ${{ inputs.zn_m2_nowifi_libwrt }}
-      uses: ./.github/workflows/zn-m2-NOWIFI-LibWrt.yml
+    zn-m2-NOWIFI-NOUSB-LibWrt:
+      if: ${{ inputs.zn_m2_nowifi_nousb_libwrt }}
+      uses: ./.github/workflows/zn-m2-NOWIFI-NOUSB-LibWrt.yml
       permissions:
         contents: write
         actions: write

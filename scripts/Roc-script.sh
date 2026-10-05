@@ -137,7 +137,8 @@ printf 'Repository\tBranch\tCommit\n' > "$THIRD_PARTY_SOURCES_FILE"
 # 修改默认IP & 固件名称 & 编译署名和时间
 TARGET_LAN_IP="${LAN_IP:-192.168.2.1}"
 sed -i "s/192.168.1.1/${TARGET_LAN_IP}/g" package/base-files/files/bin/config_generate
-sed -i "s/hostname='.*'/hostname='Roc'/g" package/base-files/files/bin/config_generate
+TARGET_HOSTNAME="${ROUTER_HOSTNAME:-LibWrt}"
+sed -i "s/hostname='.*'/hostname='${TARGET_HOSTNAME}'/g" package/base-files/files/bin/config_generate
 
 # 配置 DHCP 范围与静态网段 (若指定)
 if [ -n "${DHCP_START:-}" ] && [ -n "${DHCP_LIMIT:-}" ]; then
@@ -170,10 +171,10 @@ sed -i "s#_('Firmware Version'), (L\.isObject(boardinfo\.release) ? boardinfo\.r
                 ? boardinfo.release.description + ' / '\n \
                 : '') + (luciversion || '') + ' / ',\n \
             E('a', {\n \
-                href: 'https://github.com/laipeng668/openwrt-ci-roc/releases',\n \
+                href: 'https://github.com/seanhu1010/OpenWrt-CI/releases',\n \
                 target: '_blank',\n \
                 rel: 'noopener noreferrer'\n \
-                }, [ 'Built by Roc $(date "+%Y-%m-%d %H:%M:%S")' ])\n \
+                }, [ 'Built by LibWrt $(date "+%Y-%m-%d %H:%M:%S")' ])\n \
             ]),#" "$luci_system_js"
 
 # 调整NSS驱动q6_region内存区域预留大小（ipq6018.dtsi默认预留85MB，ipq6018-512m.dtsi默认预留55MB，带WiFi必须至少预留54MB，以下分别是改成预留16MB、32MB、64MB和96MB）
